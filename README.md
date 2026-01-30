@@ -4,7 +4,7 @@ Dynamic sales territory assignment tool for balancing workload across Enterprise
 
 ## Overview
 
-Interactive application to find optimal account segmentation thresholds and distribute accounts equitably among sales representatives based on composite load metrics.
+Interactive app to choose segmentation thresholds and distribute accounts across reps based on composite load metrics.
 
 ## Tech Stack
 
@@ -15,6 +15,7 @@ Interactive application to find optimal account segmentation thresholds and dist
 - **Papa Parse** - CSV parsing
 
 ## Getting Started
+
 ```bash
 # Install dependencies
 npm install
@@ -23,7 +24,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open http://localhost:3000
 
 ## Data Source
 
@@ -31,31 +32,45 @@ Pulls data directly from Google Sheets (Reps and Accounts tabs) via CSV export A
 
 ## Key Features
 
-- **Dynamic threshold slider** - Adjust employee count threshold to segment Enterprise vs Mid-Market
-- **Real-time assignment** - Accounts automatically redistributed as threshold changes
-- **Load-based balancing** - Greedy algorithm assigns accounts by composite load score
-- **Multi-metric visualization** - Toggle between ARR, Load, Employees, Marketers, Risk, and Location Match views
-- **Balance metrics** - Statistical analysis of distribution quality per segment
+- Dynamic threshold slider to toggle Enterprise vs Mid-Market
+- Real-time assignment and load-based balancing (greedy algorithm)
+- Multiple visualizations for ARR, Employees, Load and Risk
 
 ## Project Structure
-```
-├── app/
-│   └── page.tsx                    # Main page
-├── component/
-│   ├── segmentationAnalyzer.tsx   # Parent orchestrator
-│   ├── thresholdSlider.tsx        # Threshold input control
-│   ├── segmentDistributionChart.tsx # Pie chart visualization
-│   ├── explorationChart.tsx       # ARR vs Employees scatter
-│   └── repAssignment.tsx          # Assignment logic & charts
-├── lib/
-│   ├── assignAccounts.ts          # Core assignment algorithm
-│   ├── metrics.ts                 # Balance calculations
-│   └── getDataFromSheet.ts        # Data fetching
-```
 
-## Algorithm
+Top-level files:
 
-1. Pre-calculate base load for each account (ARR + Employees + Marketers + Risk)
-2. Add location penalty during assignment
-3. Sort accounts by load (descending)
-4. Greedy assign to rep with lowest current total load
+- `package.json`, `next.config.ts`, `tsconfig.json`, `postcss.config.mjs`, `eslint.config.mjs`
+
+- `app/`
+  - `globals.css` — global styles
+  - `layout.tsx` — root layout
+  - `page.tsx` — main page
+
+- `component/` (UI pieces)
+  - `segmentationAnalyzer.tsx` — parent orchestrator
+  - `thresholdSlider.tsx` — threshold control (sticky input)
+  - `segmentDistributionChart.tsx` — segment pie chart
+  - `explorationChart.tsx` — ARR vs employees scatter
+  - `repAssignment.tsx` — assignment UI and controls
+  - `loadsExplanation.tsx` — explanation/notes section
+  - `exportCSV.tsx` — CSV export button
+  - `repsSummaryTable.tsx` — summary table per rep
+  - `header.tsx`, `footer.tsx`
+
+- `lib/` (logic)
+  - `assignAccounts.ts` — core assignment algorithm
+  - `metrics.ts` — balance and utility calculations
+  - `getDataFromSheet.ts` — Google Sheets CSV parsing
+
+- `public/` — static assets
+
+## Algorithm (short)
+
+1. Compute base load for each account (ARR + Employees + Marketers + Risk)
+2. Apply location penalty during assignment
+3. Sort accounts by load (desc) and greedily assign to the rep with the lowest current load
+
+Notes:
+
+- More details are explained in the web UI .
