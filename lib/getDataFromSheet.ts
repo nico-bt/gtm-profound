@@ -24,13 +24,13 @@ const DOC_URL =
 // But for simplicity for this challenge is hardcoded
 // *****************************************************************************************
 export const getDataFromSheet = async () => {
-  const csvReps = await fetch(`${DOC_URL}/gviz/tq?tqx=out:csv&sheet=Reps `, {
-    cache: "force-cache",
-  }).then((res) => res.text())
+  const csvReps = await fetch(`${DOC_URL}/gviz/tq?tqx=out:csv&sheet=Reps `).then((res) =>
+    res.text(),
+  )
 
-  const csvAccounts = await fetch(`${DOC_URL}/gviz/tq?tqx=out:csv&sheet=Accounts `, {
-    cache: "force-cache",
-  }).then((res) => res.text())
+  const csvAccounts = await fetch(`${DOC_URL}/gviz/tq?tqx=out:csv&sheet=Accounts `).then((res) =>
+    res.text(),
+  )
 
   // console.log({ csvReps, csvAccounts })
 
