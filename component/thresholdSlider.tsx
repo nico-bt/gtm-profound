@@ -30,7 +30,7 @@ export function ThresholdSlider({
         </p>
       </div>
 
-      <div className="sticky top-0 z-20 bg-black/80 backdrop-blur-md py-2 shadow-sm">
+      <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md py-2 shadow-sm">
         <div className="text-xl font-bold text-center">{value.toLocaleString()} employees</div>
         <div className="max-w-200 mx-auto px-12">
           <input
