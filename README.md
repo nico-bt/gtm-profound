@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Territory Slicer
+
+Dynamic sales territory assignment tool for balancing workload across Enterprise and Mid-Market sales reps.
+
+## Overview
+
+Interactive application to find optimal account segmentation thresholds and distribute accounts equitably among sales representatives based on composite load metrics.
+
+## Tech Stack
+
+- **Next.js 15**
+- **TypeScript**
+- **Recharts** - Data visualization
+- **Tailwind CSS** - Styling
+- **Papa Parse** - CSV parsing
 
 ## Getting Started
-
-First, run the development server:
-
 ```bash
+# Install dependencies
+npm install
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Data Source
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Pulls data directly from Google Sheets (Reps and Accounts tabs) via CSV export API.
 
-## Learn More
+## Key Features
 
-To learn more about Next.js, take a look at the following resources:
+- **Dynamic threshold slider** - Adjust employee count threshold to segment Enterprise vs Mid-Market
+- **Real-time assignment** - Accounts automatically redistributed as threshold changes
+- **Load-based balancing** - Greedy algorithm assigns accounts by composite load score
+- **Multi-metric visualization** - Toggle between ARR, Load, Employees, Marketers, Risk, and Location Match views
+- **Balance metrics** - Statistical analysis of distribution quality per segment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project Structure
+```
+├── app/
+│   └── page.tsx                    # Main page
+├── component/
+│   ├── segmentationAnalyzer.tsx   # Parent orchestrator
+│   ├── thresholdSlider.tsx        # Threshold input control
+│   ├── segmentDistributionChart.tsx # Pie chart visualization
+│   ├── explorationChart.tsx       # ARR vs Employees scatter
+│   └── repAssignment.tsx          # Assignment logic & charts
+├── lib/
+│   ├── assignAccounts.ts          # Core assignment algorithm
+│   ├── metrics.ts                 # Balance calculations
+│   └── getDataFromSheet.ts        # Data fetching
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Algorithm
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Pre-calculate base load for each account (ARR + Employees + Marketers + Risk)
+2. Add location penalty during assignment
+3. Sort accounts by load (descending)
+4. Greedy assign to rep with lowest current total load
