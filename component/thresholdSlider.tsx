@@ -16,8 +16,8 @@ export function ThresholdSlider({
   step = 1000,
 }: ThresholdSliderProps) {
   return (
-    <div className="w-full mt-4 mb-2 custom-container">
-      <div>
+    <>
+      <div className="w-full mt-6 mb-2 custom-container">
         <h2 className="text-3xl small-caps font-medium mb-3 border-b-2 pb-1 border-gray-400">
           Enterprise Threshold
         </h2>
@@ -28,12 +28,11 @@ export function ThresholdSlider({
           Accounts below this threshold will be{" "}
           <span className="text-[#F97316] font-semibold">Mid-Market</span>.
         </p>
+      </div>
 
-        <div className="text-2xl font-bold mt-2 text-center">
-          {value.toLocaleString()} employees
-        </div>
-
-        <div className="max-w-200 mx-auto">
+      <div className="sticky top-0 z-20 bg-black/80 backdrop-blur-md py-2 shadow-sm">
+        <div className="text-xl font-bold text-center">{value.toLocaleString()} employees</div>
+        <div className="max-w-200 mx-auto px-12">
           <input
             type="range"
             min={min}
@@ -44,13 +43,13 @@ export function ThresholdSlider({
             className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600"
           />
 
-          <div className="flex justify-between text-xs text-gray-500 mt-2">
+          <div className="flex justify-between text-xs text-gray-500">
             <span>{min.toLocaleString()}</span>
             <span>{((min + max) / 2).toLocaleString()}</span>
             <span>{max.toLocaleString()}</span>
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }

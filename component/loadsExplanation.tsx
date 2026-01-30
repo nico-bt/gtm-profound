@@ -17,8 +17,8 @@ export function LoadsExplanation() {
       <p>
         The selection of the weights (w1, w2, w3, w4, w5) could be based on business priorities and
         historical performance data. <br />
-        We can play with these values, but I think that defining them is more a discussion to align
-        with the strategy of the company.
+        These weights are adjustable and can be iterated on, but I think values should ultimately be
+        defined through strategic discussions aligned with company priorities.
       </p>
 
       <p>For this example I have used:</p>
@@ -58,6 +58,22 @@ export function LoadsExplanation() {
           <li>4. Repeat until all accounts assigned</li>
         </ul>
       </code>
+
+      <div className="flex flex-col gap-3 mt-6">
+        <h2 className="text-xl font-semibold underline underline-offset-4">
+          Note on Segment Optimization
+        </h2>
+        <p>
+          The assignment algorithm balances territories independently within each segment
+          (Enterprise and Mid-Market). <br />
+          When the employee threshold is set very low or very high, one segment can receive
+          significantly more (or fewer) accounts than the other, leading to noticeable imbalances
+          across segments.
+        </p>
+        <p>
+          The charts and summary table will help you spot these situations to adjust the threshold.
+        </p>
+      </div>
     </div>
   )
 }

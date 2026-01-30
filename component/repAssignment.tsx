@@ -287,51 +287,6 @@ export function RepAssignment({
   )
 }
 
-// const MetricsCard = ({
-//   // metrics,
-//   segment,
-//   chartMetric,
-//   balanceBySegment,
-// }: {
-//   // metrics: Metrics
-//   segment: "enterprise" | "midMarket"
-//   chartMetric: ChartMetric
-//   balanceBySegment: any
-// }) => {
-//   const balance = balanceBySegment[segment][chartMetric] ?? null
-
-//   return (
-//     <div
-//       className={`p-3 items-center justify-center rounded-lg shadow flex flex-col gap-2 text-center ${
-//         segment === "enterprise" ? "bg-blue-50" : "bg-orange-50"
-//       }`}
-//     >
-//       <h3
-//         className={`text-xl font-bold mb-2 capitalize ${
-//           segment === "enterprise" ? "text-blue-900" : "text-orange-900"
-//         }`}
-//       >
-//         {segment}
-//         <br />
-//         {chartMetric} balance
-//       </h3>
-
-//       <div className="text-sm grid gap-4">
-//         <div>
-//           <p
-//             className={`text-2xl font-bold ${
-//               segment === "enterprise" ? "text-blue-600" : "text-orange-600"
-//             }`}
-//           >
-//             {balance !== null ? `${balance.toFixed(1)}%` : "-"}
-//           </p>
-//           <p className="text-xs text-gray-500">100 − (σ / μ) × 100</p>
-//         </div>
-//       </div>
-//     </div>
-//   )
-// }
-
 const MetricsCard = ({
   segment,
   chartMetric,
