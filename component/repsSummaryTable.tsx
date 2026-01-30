@@ -1,23 +1,14 @@
 // RepSummaryTable.tsx
 import { AssignedAccount, Rep } from "@/lib/assignAccounts"
 import { useMemo } from "react"
-import { ThresholdSlider } from "./thresholdSlider"
 
 interface RepSummaryTableProps {
   assignedAccounts: AssignedAccount[]
   reps: Rep[]
   className?: string
-  value: number
-  setThreshold: (value: number) => void
 }
 
-export function RepSummaryTable({
-  assignedAccounts,
-  reps,
-  className = "",
-  value,
-  setThreshold,
-}: RepSummaryTableProps) {
+export function RepSummaryTable({ assignedAccounts, reps, className = "" }: RepSummaryTableProps) {
   const repSummary = useMemo(() => {
     const map = new Map<
       string,

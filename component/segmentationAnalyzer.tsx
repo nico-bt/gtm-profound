@@ -29,13 +29,11 @@ export function SegmentationAnalyzer({ accounts, reps }: SegmentationAnalyzerPro
   // Handler to receive final assignment data
   const handleAssignmentComplete = (assignedAccounts: AssignedAccount[]) => {
     setFinalAssignedAccounts(assignedAccounts)
-    // console.log("Final assigned accounts with segment, rep, and load:", assignedAccounts)
   }
 
   return (
     <div className="space-y-6 mb-24 relative">
       <ThresholdSlider value={threshold} setThreshold={setThreshold} />
-      {/* <ThresholdSlider value={threshold} setThreshold={setThreshold} /> */}
 
       <div className="grid min-[920px]:grid-cols-[420px_1fr] gap-2 w-full max-w-360 mx-auto px-2">
         <SegmentDistributionChart accounts={segmentedAccounts} />
@@ -51,12 +49,7 @@ export function SegmentationAnalyzer({ accounts, reps }: SegmentationAnalyzerPro
 
       <ExportCSV_Button finalAssignedAccounts={finalAssignedAccounts} />
 
-      <RepSummaryTable
-        assignedAccounts={finalAssignedAccounts}
-        reps={reps}
-        value={threshold}
-        setThreshold={setThreshold}
-      />
+      <RepSummaryTable assignedAccounts={finalAssignedAccounts} reps={reps} />
     </div>
   )
 }
