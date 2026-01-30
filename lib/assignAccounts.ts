@@ -194,6 +194,7 @@ export function assignAccountsToReps(
   function assignToLightestRep(account: SegmentedAccountWithLoad, availableReps: Rep[]) {
     let bestRep = availableReps[0]
     let bestTotalLoad = Infinity
+    let bestAccountLoad = 0
 
     for (const rep of availableReps) {
       // Calculate final load: base + location penalty
@@ -204,22 +205,22 @@ export function assignAccountsToReps(
       if (potentialTotalLoad < bestTotalLoad) {
         bestTotalLoad = potentialTotalLoad
         bestRep = rep
+        bestAccountLoad = accountLoad
       }
     }
 
     // Assign to best rep
     const repLoad = repLoads.get(bestRep.Rep_Name)!
-    const accountLoad = getFinalLoadWithLocation(account, bestRep, weights)
 
     const assignedAccount: AssignedAccount = {
       ...account,
-      load: accountLoad,
+      load: bestAccountLoad,
       assigned_rep: bestRep.Rep_Name,
     }
 
     repLoad.accounts.push(assignedAccount)
     repLoad.totalARR += account.ARR
-    repLoad.totalLoad += accountLoad
+    repLoad.totalLoad += bestAccountLoad
     repLoad.accountCount += 1
 
     if (account.Location === bestRep.Location) {
@@ -247,6 +248,8 @@ export function assignAccountsToReps(
 export function calculateDistributionMetrics(repLoads: RepLoad[]): Metrics {
   const enterpriseLoads = repLoads.filter((r) => r.rep.Segment === "Enterprise")
   const midMarketLoads = repLoads.filter((r) => r.rep.Segment === "Mid Market")
+
+  // console.log({ enterpriseLoadsAccounts: enterpriseLoads.map((item) => item.accounts) })
 
   function calculateVariance(loads: RepLoad[], key: "totalARR" | "totalLoad") {
     const values = loads.map((l) => l[key])

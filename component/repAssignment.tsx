@@ -136,7 +136,6 @@ export function RepAssignment({
           <div className="grid gap-2">
             <MetricsCard metrics={metrics} segment="enterprise" />
             <MetricsCard metrics={metrics} segment="midMarket" />
-            <MetricsCard metrics={metrics} segment="midMarket" />
           </div>
         </div>
       </div>
@@ -199,26 +198,35 @@ const MetricsCard = ({
 }) => {
   return (
     <div
-      className={` p-3 rounded-lg shadow flex flex-col justify-between gap-2 text-center ${segment === "enterprise" ? "bg-blue-50" : "bg-orange-50"}`}
+      className={` p-3 items-center justify-center rounded-lg shadow flex flex-col gap-2 text-center ${segment === "enterprise" ? "bg-blue-50" : "bg-orange-50"}`}
     >
       <h3
-        className={`text-xl font-bold mb-1 capitalize ${segment === "enterprise" ? "text-blue-900" : "text-orange-900"}`}
+        className={`text-xl font-bold mb-2 capitalize ${segment === "enterprise" ? "text-blue-900" : "text-orange-900"}`}
       >
         {segment} Balance
       </h3>
-      <div className="text-sm grid grid-cols-2 gap-2 ">
+      <div className="text-sm grid gap-6">
         <div>
-          <p className="text-gray-700">ARR Balance</p>
           <p
             className={`text-2xl font-bold ${segment === "enterprise" ? "text-blue-600" : "text-orange-600"}`}
           >
-            {(100 - metrics[segment].arr.coefficientOfVariation).toFixed(1)}%
+            {metrics[segment].arr.coefficientOfVariation
+              ? (100 - metrics[segment].arr.coefficientOfVariation).toFixed(1) + "%"
+              : "-"}
           </p>
+          <p className="text-gray-700">
+            <span>ARR Balance:</span>
+            <span className="text-xs text-gray-500">100 − (σ / μ) × 100</span>
+          </p>
+
           <p className="text-xs text-gray-600">
-            Variance: {metrics[segment].arr.coefficientOfVariation.toFixed(1)}%
+            Variance:{" "}
+            {metrics[segment].arr.coefficientOfVariation
+              ? metrics[segment].arr.coefficientOfVariation.toFixed(1) + "%"
+              : "-"}
           </p>
         </div>
-        <div className="grid gap-1">
+        <div className="flex gap-2 justify-around">
           <div>
             <p className="text-gray-600 text-xs">Avg ARR/Rep</p>
             <p className="font-semibold text-gray-800">
