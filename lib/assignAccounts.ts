@@ -1,4 +1,3 @@
-import { SegmentedAccount } from "@/component/segmentDistributionChart"
 import { Account } from "./getDataFromSheet"
 
 export interface Rep {
@@ -7,7 +6,16 @@ export interface Rep {
   Segment: string
 }
 
-export interface AssignedAccount extends SegmentedAccount {
+export interface AccountWithLoad extends Account {
+  baseLoad: number // Load without location consideration
+}
+
+export interface SegmentedAccountWithLoad extends AccountWithLoad {
+  segment: string
+}
+
+export interface AssignedAccount extends SegmentedAccountWithLoad {
+  load: number
   assigned_rep: string
 }
 
@@ -90,60 +98,87 @@ function normalize(value: number, min: number, max: number): number {
 }
 
 /**
- * Calculate account load (complexity score) for a specific rep
+ * Pre-calculate base load for all accounts (without location)
+ * This only needs to run once when accounts or weights change
+ * No need to recalculate for each rep-account pairing
+ * Just add location penalty later
  */
-function calculateAccountLoad(
-  account: Account,
-  rep: Rep,
-  allAccounts: Account[], // ALL accounts for normalization
+export function calculateBaseLoads(
+  accounts: Account[],
   weights: AssignmentWeights = DEFAULT_WEIGHTS,
+): AccountWithLoad[] {
+  // Calculate min/max once for normalization
+  const arrs = accounts.map((a) => a.ARR)
+  const employees = accounts.map((a) => a.Num_Employees)
+  const marketers = accounts.map((a) => a.Num_Marketers)
+  const risks = accounts.map((a) => a.Risk_Score)
+
+  const minARR = Math.min(...arrs)
+  const maxARR = Math.max(...arrs)
+  const minEmp = Math.min(...employees)
+  const maxEmp = Math.max(...employees)
+  const minMkt = Math.min(...marketers)
+  const maxMkt = Math.max(...marketers)
+  const minRisk = Math.min(...risks)
+  const maxRisk = Math.max(...risks)
+
+  // Calculate base load for each account and add to new array accountsWithLoad
+  return accounts.map((account) => {
+    const arrNorm = normalize(account.ARR, minARR, maxARR)
+    const empNorm = normalize(account.Num_Employees, minEmp, maxEmp)
+    const mktNorm = normalize(account.Num_Marketers, minMkt, maxMkt)
+    const riskNorm = normalize(account.Risk_Score, minRisk, maxRisk)
+
+    // Base load without location penalty
+    const baseLoad =
+      arrNorm * weights.arr +
+      empNorm * weights.employees +
+      mktNorm * weights.marketers +
+      riskNorm * weights.risk
+
+    return {
+      ...account,
+      baseLoad,
+    }
+  })
+}
+
+/**
+ * Calculate final load for an account-rep pairing
+ * Just adds location penalty to pre-calculated base load
+ */
+function getFinalLoadWithLocation(
+  account: AccountWithLoad,
+  rep: Rep,
+  weights: AssignmentWeights,
 ): number {
-  // Get min/max for normalization
-  const arrs = allAccounts.map((a) => a.ARR)
-  const employees = allAccounts.map((a) => a.Num_Employees)
-  const marketers = allAccounts.map((a) => a.Num_Marketers)
-  const risks = allAccounts.map((a) => a.Risk_Score)
-
-  // Normalized values
-  const arrNorm = normalize(account.ARR, Math.min(...arrs), Math.max(...arrs))
-  const empNorm = normalize(account.Num_Employees, Math.min(...employees), Math.max(...employees))
-  const mktNorm = normalize(account.Num_Marketers, Math.min(...marketers), Math.max(...marketers))
-  const riskNorm = normalize(account.Risk_Score, Math.min(...risks), Math.max(...risks))
-
-  // Location mismatch adds to load (1 = mismatch, 0 = match)
-  const locationMismatch = account.Location !== rep.Location ? 1 : 0
-
-  return (
-    arrNorm * weights.arr +
-    empNorm * weights.employees +
-    mktNorm * weights.marketers +
-    riskNorm * weights.risk +
-    locationMismatch * weights.location
-  )
+  const locationPenalty = account.Location !== rep.Location ? weights.location : 0
+  return account.baseLoad + locationPenalty
 }
 
 /**
  * Assign accounts to reps using greedy algorithm
  */
 export function assignAccountsToReps(
-  accounts: Account[],
-  segmentedAccounts: SegmentedAccount[],
+  accountsWithLoad: AccountWithLoad[],
+  threshold: number,
   reps: Rep[],
-  weights?: AssignmentWeights,
+  weights: AssignmentWeights = DEFAULT_WEIGHTS,
 ): RepLoad[] {
-  const actualWeights = weights || DEFAULT_WEIGHTS
+  // Segment accounts based on threshold
+  const segmentedAccounts: SegmentedAccountWithLoad[] = accountsWithLoad.map((account) => ({
+    ...account,
+    segment: account.Num_Employees >= threshold ? "Enterprise" : "Mid Market",
+  }))
 
-  // Separate reps by segment
+  // Separate by segment
   const enterpriseReps = reps.filter((r) => r.Segment === "Enterprise")
   const midMarketReps = reps.filter((r) => r.Segment === "Mid Market")
-
-  // Separate accounts by segment
   const enterpriseAccounts = segmentedAccounts.filter((a) => a.segment === "Enterprise")
   const midMarketAccounts = segmentedAccounts.filter((a) => a.segment === "Mid Market")
 
   // Initialize rep loads
   const repLoads: Map<string, RepLoad> = new Map()
-
   reps.forEach((rep) => {
     repLoads.set(rep.Rep_Name, {
       rep,
@@ -156,53 +191,49 @@ export function assignAccountsToReps(
   })
 
   // Greedy assignment function
-  function assignToLightestRep(account: SegmentedAccount, availableReps: Rep[]) {
-    // Calculate load for this account with each potential rep
+  function assignToLightestRep(account: SegmentedAccountWithLoad, availableReps: Rep[]) {
     let bestRep = availableReps[0]
     let bestTotalLoad = Infinity
 
     for (const rep of availableReps) {
-      const accountLoad = calculateAccountLoad(account, rep, accounts, actualWeights)
+      // Calculate final load: base + location penalty
+      const accountLoad = getFinalLoadWithLocation(account, rep, weights)
       const currentRepLoad = repLoads.get(rep.Rep_Name)!.totalLoad
       const potentialTotalLoad = currentRepLoad + accountLoad
 
-      // Choose rep that would have the lowest total load after this assignment
       if (potentialTotalLoad < bestTotalLoad) {
         bestTotalLoad = potentialTotalLoad
         bestRep = rep
       }
     }
 
-    // Assign account to best rep
+    // Assign to best rep
     const repLoad = repLoads.get(bestRep.Rep_Name)!
-    const accountLoad = calculateAccountLoad(account, bestRep, accounts, actualWeights)
+    const accountLoad = getFinalLoadWithLocation(account, bestRep, weights)
 
     const assignedAccount: AssignedAccount = {
       ...account,
+      load: accountLoad,
       assigned_rep: bestRep.Rep_Name,
     }
 
     repLoad.accounts.push(assignedAccount)
-    repLoad.totalARR += assignedAccount.ARR
+    repLoad.totalARR += account.ARR
     repLoad.totalLoad += accountLoad
     repLoad.accountCount += 1
 
-    // Track location matches
     if (account.Location === bestRep.Location) {
       repLoad.locationMatches += 1
     }
   }
 
-  // Sort accounts by ARR (descending) to assign biggest first
-  const sortedEnterpriseAccounts = [...enterpriseAccounts].sort((a, b) => b.ARR - a.ARR)
-  const sortedMidMarketAccounts = [...midMarketAccounts].sort((a, b) => b.ARR - a.ARR)
+  // Sort by baseLoad and assign
+  const sortedEnterpriseAccounts = [...enterpriseAccounts].sort((a, b) => b.baseLoad - a.baseLoad)
+  const sortedMidMarketAccounts = [...midMarketAccounts].sort((a, b) => b.baseLoad - a.baseLoad)
 
-  // Assign Enterprise accounts
   for (const account of sortedEnterpriseAccounts) {
     assignToLightestRep(account, enterpriseReps)
   }
-
-  // Assign Mid Market accounts
   for (const account of sortedMidMarketAccounts) {
     assignToLightestRep(account, midMarketReps)
   }
@@ -222,7 +253,7 @@ export function calculateDistributionMetrics(repLoads: RepLoad[]): Metrics {
     const mean = values.reduce((sum, v) => sum + v, 0) / values.length
     const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length
     const stdDev = Math.sqrt(variance)
-    const coefficientOfVariation = (stdDev / mean) * 100 // as percentage
+    const coefficientOfVariation = (stdDev / mean) * 100
     return {
       mean,
       stdDev,

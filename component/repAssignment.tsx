@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import {
   BarChart,
   Bar,
@@ -14,59 +14,57 @@ import {
 } from "recharts"
 import {
   assignAccountsToReps,
+  calculateBaseLoads,
   calculateDistributionMetrics,
   type RepLoad,
 } from "@/lib/assignAccounts"
-import type { SegmentedAccount } from "./segmentDistributionChart"
-import type { Metrics, Rep } from "@/lib/assignAccounts"
+import type { AccountWithLoad, AssignedAccount, Metrics, Rep } from "@/lib/assignAccounts"
 import { Account } from "@/lib/getDataFromSheet"
+
+export interface SegmentedAccount extends Account {
+  segment: "Enterprise" | "Mid Market"
+}
 
 interface RepAssignmentProps {
   accounts: Account[]
   segmentedAccounts: SegmentedAccount[]
   reps: Rep[]
-  onAssignmentComplete?: (assignedAccounts: AssignedAccountWithLoad[]) => void
-}
-
-export interface AssignedAccountWithLoad extends SegmentedAccount {
-  assigned_rep: string
-  load: number
+  threshold: number
+  onAssignmentComplete?: (assignedAccounts: AssignedAccount[]) => void
 }
 
 export function RepAssignment({
   accounts,
   segmentedAccounts,
   reps,
+  threshold,
   onAssignmentComplete,
 }: RepAssignmentProps) {
-  const { repLoads, assignedAccountsWithLoad } = useMemo(() => {
-    const repLoads = assignAccountsToReps(accounts, segmentedAccounts, reps)
+  // Calculate base loads ONCE - only when accounts change
+  const accountsWithLoad = useMemo<AccountWithLoad[]>(() => {
+    return calculateBaseLoads(accounts)
+  }, [accounts])
 
-    // Create flat array of all assigned accounts with their load scores
-    const assignedAccountsWithLoad: AssignedAccountWithLoad[] = repLoads.flatMap((rl) =>
-      rl.accounts.map((account) => {
-        // Find the load for this specific account-rep pairing
-        const accountLoad = rl.totalLoad / rl.accountCount // approximation, or we could track individually
-        return {
-          ...account,
-          load: accountLoad,
-        }
-      }),
-    )
-
-    return { repLoads, assignedAccountsWithLoad }
-  }, [accounts, segmentedAccounts, reps])
-
-  // Call the callback when assignment is complete
-  useMemo(() => {
-    if (onAssignmentComplete) {
-      onAssignmentComplete(assignedAccountsWithLoad)
-    }
-  }, [assignedAccountsWithLoad, onAssignmentComplete])
+  // Fast reassignment when threshold changes
+  const repLoads = useMemo(() => {
+    return assignAccountsToReps(accountsWithLoad, threshold, reps)
+  }, [accountsWithLoad, threshold, reps])
 
   const metrics = useMemo(() => {
     return calculateDistributionMetrics(repLoads)
   }, [repLoads])
+
+  // Flatten assigned accounts for callback
+  const assignedAccounts = useMemo(() => {
+    return repLoads.flatMap((rl) => rl.accounts)
+  }, [repLoads])
+
+  // Call callback
+  useEffect(() => {
+    if (onAssignmentComplete && assignedAccounts.length > 0) {
+      onAssignmentComplete(assignedAccounts)
+    }
+  }, [assignedAccounts, onAssignmentComplete])
 
   // Prepare data for chart
   const chartData = repLoads.map((rl) => ({
@@ -81,7 +79,6 @@ export function RepAssignment({
   const enterpriseData = chartData.filter((d) => d.segment === "Enterprise")
   const midMarketData = chartData.filter((d) => d.segment === "Mid Market")
 
-  // console.log({ midMarketData })
   return (
     <div className="w-full space-y-6">
       {/* Rep Balance Chart */}

@@ -1,46 +1,11 @@
-// "use client"
-// import { Account } from "@/lib/getDataFromSheet"
-// import { useMemo, useState } from "react"
-// import { ThresholdSlider } from "./thresholdSlider"
-// import { SegmentDistribution } from "./segmentDistribution"
-
-// type SegmentationAnalyzerProps = {
-//   accounts: Account[]
-// }
-
-// function SegmentationAnalyzer({ accounts }: SegmentationAnalyzerProps) {
-//   const [threshold, setThreshold] = useState(100000) // default threshold
-
-//   // Derive segmented data from threshold
-//   const segmentedAccounts = useMemo(() => {
-//     return accounts.map((account) => ({
-//       ...account,
-//       segment: account.Num_Employees >= threshold ? "Enterprise" : "Mid Market",
-//     }))
-//   }, [accounts, threshold])
-
-//   return (
-//     <>
-//       <ThresholdSlider value={threshold} onChange={setThreshold} />
-//       <SegmentDistribution accounts={segmentedAccounts} />
-//     </>
-//   )
-
-//   /* <RepAssignment accounts={segmentedAccounts} reps={reps} /> */
-// }
-
-// export default SegmentationAnalyzer
-
-// ***************
-
 "use client"
 
 import { useState, useMemo } from "react"
 import { ThresholdSlider } from "./thresholdSlider"
-import { SegmentDistributionChart, SegmentedAccount } from "./segmentDistributionChart"
-import { ExplorationChart } from "./explorationChart"
-import { RepAssignment, type AssignedAccountWithLoad } from "./repAssignment"
+import { SegmentDistributionChart } from "./segmentDistributionChart"
+import { RepAssignment, SegmentedAccount } from "./repAssignment"
 import type { Account, Rep } from "@/lib/getDataFromSheet"
+import { AssignedAccount } from "@/lib/assignAccounts"
 
 interface SegmentationAnalyzerProps {
   accounts: Account[]
@@ -49,7 +14,7 @@ interface SegmentationAnalyzerProps {
 
 export function SegmentationAnalyzer({ accounts, reps }: SegmentationAnalyzerProps) {
   const [threshold, setThreshold] = useState(100000)
-  const [finalAssignedAccounts, setFinalAssignedAccounts] = useState<AssignedAccountWithLoad[]>([])
+  const [finalAssignedAccounts, setFinalAssignedAccounts] = useState<AssignedAccount[]>([])
 
   // Segment accounts based on threshold
   const segmentedAccounts = useMemo<SegmentedAccount[]>(() => {
@@ -60,7 +25,7 @@ export function SegmentationAnalyzer({ accounts, reps }: SegmentationAnalyzerPro
   }, [accounts, threshold])
 
   // Handler to receive final assignment data
-  const handleAssignmentComplete = (assignedAccounts: AssignedAccountWithLoad[]) => {
+  const handleAssignmentComplete = (assignedAccounts: AssignedAccount[]) => {
     setFinalAssignedAccounts(assignedAccounts)
     // console.log("Final assigned accounts with segment, rep, and load:", assignedAccounts)
   }
@@ -131,6 +96,7 @@ export function SegmentationAnalyzer({ accounts, reps }: SegmentationAnalyzerPro
           accounts={accounts}
           segmentedAccounts={segmentedAccounts}
           reps={reps}
+          threshold={threshold}
           onAssignmentComplete={handleAssignmentComplete}
         />
       </div>

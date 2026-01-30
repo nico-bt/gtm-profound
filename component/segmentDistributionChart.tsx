@@ -9,11 +9,7 @@ import {
   PieLabelRenderProps,
 } from "recharts"
 import { useMemo } from "react"
-import { Account } from "@/lib/getDataFromSheet"
-
-export interface SegmentedAccount extends Account {
-  segment: "Enterprise" | "Mid Market"
-}
+import { SegmentedAccount } from "./repAssignment"
 
 interface SegmentDistributionProps {
   accounts: SegmentedAccount[]
