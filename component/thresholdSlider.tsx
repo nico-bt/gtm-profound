@@ -16,7 +16,7 @@ export function ThresholdSlider({
   step = 1000,
 }: ThresholdSliderProps) {
   return (
-    <div className="w-full mt-12 mb-2 custom-container">
+    <div className="w-full mt-4 mb-2 custom-container">
       <div>
         <h2 className="text-3xl small-caps font-medium mb-3 border-b-2 pb-1 border-gray-400">
           Enterprise Threshold

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   BarChart,
   Bar,
@@ -10,16 +10,15 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
-  Label,
 } from "recharts"
 import {
   assignAccountsToReps,
   calculateBaseLoads,
   calculateDistributionMetrics,
-  type RepLoad,
 } from "@/lib/assignAccounts"
 import type { AccountWithLoad, AssignedAccount, Metrics, Rep } from "@/lib/assignAccounts"
 import { Account } from "@/lib/getDataFromSheet"
+import { BalanceBySegment, calculateMetrics, computeBalance } from "@/lib/metrics"
 
 export interface SegmentedAccount extends Account {
   segment: "Enterprise" | "Mid Market"
@@ -33,6 +32,67 @@ interface RepAssignmentProps {
   onAssignmentComplete?: (assignedAccounts: AssignedAccount[]) => void
 }
 
+type ChartMetric =
+  | "arr"
+  | "load"
+  | "employees"
+  | "marketers"
+  | "risk"
+  | "accounts"
+  | "locationMatches"
+
+export interface ChartData {
+  name: string
+  segment: string
+  arr: number
+  load: number
+  employees: number
+  marketers: number
+  risk: number
+  accounts: number
+  locationMatches: number
+}
+;[]
+
+const METRIC_OPTIONS: { value: ChartMetric; label: string; formatter: (val: number) => string }[] =
+  [
+    {
+      value: "arr",
+      label: "Total ARR",
+      formatter: (val) => `$${(val / 1000000).toFixed(0)}M`,
+    },
+    {
+      value: "load",
+      label: "Total Load",
+      formatter: (val) => val.toFixed(2),
+    },
+    {
+      value: "employees",
+      label: "Total Employees",
+      formatter: (val) => `${(val / 1000).toFixed(0)}K`,
+    },
+    {
+      value: "marketers",
+      label: "Total Marketers",
+      formatter: (val) => `${(val / 1000).toFixed(0)}K`,
+    },
+    {
+      value: "risk",
+      label: "Avg Risk Score",
+      formatter: (val) => val.toFixed(1),
+    },
+    {
+      value: "accounts",
+      label: "Total Accounts",
+      formatter: (val) => val.toFixed(0),
+    },
+    {
+      value: "locationMatches",
+      label: "Location Matches %",
+      formatter: (val) => val.toFixed(2),
+    },
+  ]
+
 export function RepAssignment({
   accounts,
   segmentedAccounts,
@@ -40,6 +100,8 @@ export function RepAssignment({
   threshold,
   onAssignmentComplete,
 }: RepAssignmentProps) {
+  const [selectedMetric, setSelectedMetric] = useState<ChartMetric>("arr")
+
   // Calculate base loads ONCE - only when accounts change
   const accountsWithLoad = useMemo<AccountWithLoad[]>(() => {
     return calculateBaseLoads(accounts)
@@ -49,10 +111,6 @@ export function RepAssignment({
   const repLoads = useMemo(() => {
     return assignAccountsToReps(accountsWithLoad, threshold, reps)
   }, [accountsWithLoad, threshold, reps])
-
-  const metrics = useMemo(() => {
-    return calculateDistributionMetrics(repLoads)
-  }, [repLoads])
 
   // Flatten assigned accounts for callback
   const assignedAccounts = useMemo(() => {
@@ -66,29 +124,55 @@ export function RepAssignment({
     }
   }, [assignedAccounts, onAssignmentComplete])
 
-  // Prepare data for chart
-  const chartData = repLoads.map((rl) => ({
+  // Prepare data for chart with all metrics
+  const chartData: ChartData[] = repLoads.map((rl) => ({
     name: rl.rep.Rep_Name,
     segment: rl.rep.Segment,
-    ARR: rl.totalARR,
-    accounts: rl.accountCount,
+    arr: rl.totalARR,
     load: rl.totalLoad,
+    employees: rl.accounts.reduce((sum, acc) => sum + acc.Num_Employees, 0),
+    marketers: rl.accounts.reduce((sum, acc) => sum + acc.Num_Marketers, 0),
+    risk:
+      rl.accountCount > 0
+        ? rl.accounts.reduce((sum, acc) => sum + acc.Risk_Score, 0) / rl.accountCount
+        : 0,
+    accounts: rl.accountCount,
+    locationMatches: rl.locationMatches / rl.accountCount,
   }))
+
+  const balanceBySegment = useMemo<BalanceBySegment>(() => {
+    return calculateMetrics({ chartData })
+  }, [chartData])
 
   // Separate by segment for display
   const enterpriseData = chartData.filter((d) => d.segment === "Enterprise")
   const midMarketData = chartData.filter((d) => d.segment === "Mid Market")
 
+  const currentMetricConfig = METRIC_OPTIONS.find((m) => m.value === selectedMetric)!
+
   return (
     <div className="w-full space-y-6">
       {/* Rep Balance Chart */}
       <div className="px-6 bg-white rounded-lg shadow py-3">
-        <h3 className="text-xl font-medium text-gray-700 mb-2 text-center">
-          Rep Load Distribution
-        </h3>
+        <div className="flex items-center mb-4 gap-3">
+          <h3 className="text-xl font-medium text-gray-700">Rep Distribution by</h3>
 
-        <div className="grid grid-cols-[1fr_320px] gap-6">
-          <div className="space-y-8">
+          {/* Metric Selector */}
+          <select
+            value={selectedMetric}
+            onChange={(e) => setSelectedMetric(e.target.value as ChartMetric)}
+            className="text-black px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300 text-lg"
+          >
+            {METRIC_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value} className="text-sm">
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-[1fr_220px] gap-6">
+          <div className="space-y-6">
             {/* Enterprise Chart */}
             <div>
               <h4 className="text-lg font-semibold text-blue-900 mb-2">Enterprise Reps</h4>
@@ -96,16 +180,18 @@ export function RepAssignment({
                 <BarChart data={enterpriseData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
-                  <YAxis tickFormatter={(value) => `$${(value / 1000000).toFixed(1)}M`} />
+                  <YAxis tickFormatter={currentMetricConfig.formatter} />
                   <Tooltip
                     isAnimationActive={false}
-                    formatter={(value, name) => {
-                      if (name === "ARR") return `$${(Number(value) / 1000000).toFixed(2)}M`
-                      return value
-                    }}
+                    formatter={(value) => currentMetricConfig.formatter(Number(value))}
                   />
                   <Legend />
-                  <Bar dataKey="ARR" fill="#3B82F6" name="Total ARR" isAnimationActive={false} />
+                  <Bar
+                    dataKey={selectedMetric}
+                    fill="#3B82F6"
+                    name={currentMetricConfig.label}
+                    isAnimationActive={false}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -116,32 +202,44 @@ export function RepAssignment({
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={midMarketData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis tickFormatter={(value) => `$${(value / 1000000).toFixed(1)}M`} />
+                  <XAxis dataKey="name" tick={{ width: 90 }} />
+                  <YAxis tickFormatter={currentMetricConfig.formatter} />
                   <Tooltip
                     isAnimationActive={false}
-                    formatter={(value, name) => {
-                      if (name === "ARR") return `$${(Number(value) / 1000000).toFixed(2)}M`
-                      return value
-                    }}
+                    formatter={(value) => currentMetricConfig.formatter(Number(value))}
                   />
                   <Legend />
-                  <Bar dataKey="ARR" fill="#F97316" name="Total ARR" isAnimationActive={false} />
+                  <Bar
+                    dataKey={selectedMetric}
+                    fill="#F97316"
+                    name={currentMetricConfig.label}
+                    isAnimationActive={false}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
           {/* Metrics Cards */}
-          <div className="grid gap-2">
-            <MetricsCard metrics={metrics} segment="enterprise" />
-            <MetricsCard metrics={metrics} segment="midMarket" />
+          <div className="grid gap-3">
+            <MetricsCard
+              // metrics={metrics}
+              segment="enterprise"
+              chartMetric={selectedMetric}
+              balanceBySegment={balanceBySegment}
+            />
+            <MetricsCard
+              // metrics={metrics}
+              segment="midMarket"
+              chartMetric={selectedMetric}
+              balanceBySegment={balanceBySegment}
+            />
           </div>
         </div>
       </div>
 
-      {/* Detailed Rep Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Detailed Rep Cards  */}
+      {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {repLoads.map((rl) => (
           <div
             key={rl.rep.Rep_Name}
@@ -184,69 +282,118 @@ export function RepAssignment({
             </div>
           </div>
         ))}
-      </div>
+      </div> */}
     </div>
   )
 }
 
+// const MetricsCard = ({
+//   // metrics,
+//   segment,
+//   chartMetric,
+//   balanceBySegment,
+// }: {
+//   // metrics: Metrics
+//   segment: "enterprise" | "midMarket"
+//   chartMetric: ChartMetric
+//   balanceBySegment: any
+// }) => {
+//   const balance = balanceBySegment[segment][chartMetric] ?? null
+
+//   return (
+//     <div
+//       className={`p-3 items-center justify-center rounded-lg shadow flex flex-col gap-2 text-center ${
+//         segment === "enterprise" ? "bg-blue-50" : "bg-orange-50"
+//       }`}
+//     >
+//       <h3
+//         className={`text-xl font-bold mb-2 capitalize ${
+//           segment === "enterprise" ? "text-blue-900" : "text-orange-900"
+//         }`}
+//       >
+//         {segment}
+//         <br />
+//         {chartMetric} balance
+//       </h3>
+
+//       <div className="text-sm grid gap-4">
+//         <div>
+//           <p
+//             className={`text-2xl font-bold ${
+//               segment === "enterprise" ? "text-blue-600" : "text-orange-600"
+//             }`}
+//           >
+//             {balance !== null ? `${balance.toFixed(1)}%` : "-"}
+//           </p>
+//           <p className="text-xs text-gray-500">100 − (σ / μ) × 100</p>
+//         </div>
+//       </div>
+//     </div>
+//   )
+// }
+
 const MetricsCard = ({
-  metrics,
   segment,
+  chartMetric,
+  balanceBySegment,
 }: {
-  metrics: Metrics
   segment: "enterprise" | "midMarket"
+  chartMetric: ChartMetric
+  balanceBySegment: BalanceBySegment
 }) => {
+  const stats = balanceBySegment[segment][chartMetric] ?? {
+    balance: null,
+    mean: null,
+    stdDev: null,
+  }
+
   return (
     <div
-      className={` p-3 items-center justify-center rounded-lg shadow flex flex-col gap-2 text-center ${segment === "enterprise" ? "bg-blue-50" : "bg-orange-50"}`}
+      className={`p-3 items-center justify-center rounded-lg shadow flex flex-col gap-2 text-center ${
+        segment === "enterprise" ? "bg-blue-50" : "bg-orange-50"
+      }`}
     >
       <h3
-        className={`text-xl font-bold mb-2 capitalize ${segment === "enterprise" ? "text-blue-900" : "text-orange-900"}`}
+        className={`text-xl font-bold mb-2 capitalize ${
+          segment === "enterprise" ? "text-blue-900" : "text-orange-900"
+        }`}
       >
-        {segment} Balance
+        {segment}
+        <br />
+        {chartMetric} balance
       </h3>
-      <div className="text-sm grid gap-6">
+
+      <div className="text-sm grid gap-2">
         <div>
           <p
-            className={`text-2xl font-bold ${segment === "enterprise" ? "text-blue-600" : "text-orange-600"}`}
+            className={`text-2xl font-bold ${
+              segment === "enterprise" ? "text-blue-600" : "text-orange-600"
+            }`}
           >
-            {metrics[segment].arr.coefficientOfVariation
-              ? (100 - metrics[segment].arr.coefficientOfVariation).toFixed(1) + "%"
-              : "-"}
+            {stats.balance !== null ? `${stats.balance.toFixed(1)}%` : "-"}
           </p>
-          <p className="text-gray-700">
-            <span>ARR Balance:</span>
-            <span className="text-xs text-gray-500">100 − (σ / μ) × 100</span>
-          </p>
+          <p className="text-xs text-gray-500">Balance Score</p>
+          <p className="text-xs text-gray-500">100 − (σ / μ) × 100</p>
+        </div>
 
-          <p className="text-xs text-gray-600">
-            Variance:{" "}
-            {metrics[segment].arr.coefficientOfVariation
-              ? metrics[segment].arr.coefficientOfVariation.toFixed(1) + "%"
-              : "-"}
-          </p>
-        </div>
-        <div className="flex gap-2 justify-around">
+        <div className="grid grid-cols-2 gap-2 text-gray-500 mt-3 text-xs">
           <div>
-            <p className="text-gray-600 text-xs">Avg ARR/Rep</p>
-            <p className="font-semibold text-gray-800">
-              ${(metrics[segment].arr.mean / 1000000).toFixed(2)}M
+            <p className="text-sm">μ</p>
+            <p className="font-medium">
+              {stats.mean !== null
+                ? stats.mean.toLocaleString("en-US", { maximumFractionDigits: 2 })
+                : "-"}
             </p>
           </div>
           <div>
-            <p className="text-gray-600 text-xs">Range</p>
-            <p className="font-semibold text-gray-800">
-              ${(metrics[segment].arr.min / 1000000).toFixed(2)}M - $
-              {(metrics[segment].arr.max / 1000000).toFixed(2)}M
+            <p className="text-sm">σ</p>
+            <p className="font-medium">
+              {stats.stdDev !== null
+                ? stats.stdDev.toLocaleString("en-US", { maximumFractionDigits: 2 })
+                : "-"}
             </p>
           </div>
         </div>
-      </div>
-      <div className="flex gap-2 text-xs justify-center">
-        <p className="text-gray-600">Location Match</p>
-        <p className="font-semibold text-gray-800">
-          {metrics[segment].locationMatchRate.toFixed(1)}%
-        </p>
       </div>
     </div>
   )

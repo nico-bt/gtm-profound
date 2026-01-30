@@ -73,7 +73,7 @@ export function SegmentationAnalyzer({ accounts, reps }: SegmentationAnalyzerPro
   }
 
   return (
-    <div className="py-8 space-y-6">
+    <div className="space-y-6">
       {/* Export csv btn */}
       {/* <div className="flex justify-between items-center custom-container">
         <h1 className="text-3xl font-bold">Territory Slicer</h1>
@@ -89,7 +89,7 @@ export function SegmentationAnalyzer({ accounts, reps }: SegmentationAnalyzerPro
 
       <ThresholdSlider value={threshold} setThreshold={setThreshold} />
 
-      <div className="grid grid-cols-[420px_1fr] gap-2 items-start w-full max-w-360 mx-auto px-2">
+      <div className="grid grid-cols-[420px_1fr] gap-2 w-full max-w-360 mx-auto px-2">
         <SegmentDistributionChart accounts={segmentedAccounts} />
 
         <RepAssignment

@@ -25,7 +25,7 @@ export function ExplorationChart({ accounts }: ExplorationChartProps) {
   }))
 
   return (
-    <div className="w-full mx-auto grid gap-4 font-sans custom-container">
+    <div className="w-full mx-auto grid gap-4 custom-container">
       <div>
         <h2 className="text-3xl small-caps font-medium mb-3 border-b-2 pb-1 border-gray-400">
           Some exploration before
